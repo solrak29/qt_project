@@ -29,10 +29,35 @@ using namespace std;
 using namespace xercesc;
 
 const char* NOT_AVAILABLE_PREV = "STIG Item was not available in previous Release.";
+const char* NOT_REVIEWED = "Not_Reviewed";
 
 void usage() {
     cout << "Error Incorrect Arguments" << endl;
     cout << "Usage: xml2sigxml <old filename> < new filename>" << endl;
+}
+
+char* getStatus( XMLSize_t index, DOMNodeList* children) {
+    DOMElement* e = dynamic_cast< xercesc::DOMElement* >( children->item(index));
+    DOMNodeList *data_list = e->getElementsByTagName(XMLString::transcode("FINDING_DETAILS"));
+    DOMNode* c = data_list->item(0);
+    DOMNode* cc = c->getChildNodes()->item(0);
+    DOMText* t = dynamic_cast< xercesc::DOMText* >(cc);
+    char* status = XMLString::transcode(t->getWholeText());
+    cout << "Found details " << status << endl;
+    return status;
+
+}
+
+
+char* getRuleID( XMLSize_t index, DOMNodeList* children) {
+    DOMElement* e = dynamic_cast< xercesc::DOMElement* >( children->item(index));
+    DOMNodeList *data_list = e->getElementsByTagName(XMLString::transcode("STIG_DATA"));
+    DOMElement* re = dynamic_cast< xercesc::DOMElement* >( data_list->item(3));
+    DOMNodeList *att_list = re->getElementsByTagName(XMLString::transcode("ATTRIBUTE_DATA"));
+    DOMNode* c = att_list->item(0);
+    DOMNode* cc = c->getChildNodes()->item(0);
+    DOMText* t = dynamic_cast< xercesc::DOMText* >(cc);
+    return XMLString::transcode(t->getWholeText());
 }
 
 void checkRuleID( DOMDocument* xmlold, DOMDocument* xmlnew ) {
@@ -40,16 +65,25 @@ void checkRuleID( DOMDocument* xmlold, DOMDocument* xmlnew ) {
     DOMNodeList *children = xmlnewRoot->getElementsByTagName(XMLString::transcode("VULN"));
     const XMLSize_t nodeCount = children->getLength();
     for( XMLSize_t i = 0; i < nodeCount; i++ ) {
-        DOMElement* e = dynamic_cast< xercesc::DOMElement* >( children->item(i));
-        DOMNodeList *data_list = e->getElementsByTagName(XMLString::transcode("STIG_DATA"));
-        DOMElement* re = dynamic_cast< xercesc::DOMElement* >( data_list->item(3));
-        DOMNodeList *att_list = re->getElementsByTagName(XMLString::transcode("ATTRIBUTE_DATA"));
-        DOMNode* c = att_list->item(0);
-        DOMNodeList* cc = c->getChildNodes()->item(0)
-        DOMText* t = dynamic_cast< xercesc::DOMText* >(cc);
-        cout << "test=> " << XMLString::transcode(t->getWholeText()) << endl;
+        char* ruleId = getRuleID( i, children);
+        
+	//
+	// Find rule id in old doc
+	//
+        DOMElement* xmloldRoot = xmlold->getDocumentElement();
+        DOMNodeList *children = xmloldRoot->getElementsByTagName(XMLString::transcode("VULN"));
+        const XMLSize_t nodeCount = children->getLength();
+        for( XMLSize_t i = 0; i < nodeCount; i++ ) {
+	    char* oldRuleId = getRuleID( i, children);
+	    if (strcmp(ruleId,oldRuleId) == 0 ) {
+	        cout << "Found match old " << oldRuleId << " " << ruleId << endl;
+		if (strcmp(getStatus(i, children), NOT_REVIEWED) == 0) {
+                    cout << "Same rule entries not reviewd" << endl;
+		}
+		break;
+	    }
+        }
     }
-
 }
 
 void write_file(DOMDocument* d, const char* filename) {

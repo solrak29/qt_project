@@ -1,0 +1,6 @@
+QTDIR=/usr/lib/qt5
+export PATH=/usr/x86_64-w64-mingw32/sys-root/mingw/bin:$PATH
+PATH=$QTDIR/bin:$PATH
+MANPATH=$QTDIR/man:$MANPATH
+LD_LIBRARY_PATH=$QTDIR/lib:$LD_LIBRARY_PATH
+export QTDIR PATH MANPATH LD_LIBRARY_PATH
