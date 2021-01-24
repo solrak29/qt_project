@@ -45,10 +45,10 @@ OBJECTS_DIR   = release/
 
 ####### Files
 
-SOURCES       = main.cpp xmlsig2sig.cpp 
-OBJECTS       = release/xmlsig2sig.o release/main.o
+SOURCES       = main.cpp xmlsig2sig.cpp sigReport.cpp 
+OBJECTS       = release/sigReport.o release/xmlsig2sig.o release/main.o
 
-DIST          =   main.cpp xmlsig2sig.cpp
+DIST          =   main.cpp xmlsig2sig.cpp sigReport.cpp
 QMAKE_TARGET  = xmlsig2sig 
 DESTDIR        = release/ #avoid trailing-slash linebreak
 TARGET         = xmlsig2sig.exe
@@ -70,7 +70,7 @@ qmake_all: FORCE
 dist:
 
 clean: compiler_clean 
-	-$(DEL_FILE) release/main.o release/xmlsig2sig.o
+	-$(DEL_FILE) release/main.o release/xmlsig2sig.o release/sigReport.o
 
 distclean: clean 
 	-$(DEL_FILE) .qmake.stash
@@ -118,6 +118,9 @@ release/main.o: main.cpp /usr/x86_64-w64-mingw32/sys-root/mingw/include/
 
 release/xmlsig2sig.o: xmlsig2sig.cpp /usr/x86_64-w64-mingw32/sys-root/mingw/include/
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o release/xmlsig2sig.o xmlsig2sig.cpp
+
+release/sigReport.o: sigReport.cpp /usr/x86_64-w64-mingw32/sys-root/mingw/include/
+	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o release/sigReport.o sigReport.cpp
 
 ####### Install
 

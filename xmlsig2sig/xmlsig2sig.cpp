@@ -22,6 +22,7 @@
 #include <iostream>
 #include <string>
 #include "stigconst.h"
+#include "sigReport.h"
 
 
 using namespace std;
@@ -29,20 +30,68 @@ using namespace xercesc;
 
 int needingAction = 0;
 int changed = 0;
-string strNeedAction = "";
-string strReport = "";
+int newcount = 0;
+int matchingruleid = 0;
+string strNeedAction = "\n";
+string strReport = "\n";
+StigReport gReport;
+
+void write_report() {
+    gReport.addMatching(matchingruleid);
+    gReport.addNew(newcount);
+    gReport.addChanged(changed);
+    gReport.addNeedsAction(needingAction);
+    gReport.writeReport();
+}
 
 void addToReport(char* status, 
                  char* oldRule, char* newRule,
                  char* oldVuln, char* newVuln,
                  char* oldStig, char* newStig) {
+    if (status)
+    {
+        XMLString::trim(status);
+        XMLString::trim(oldRule);
+        XMLString::trim(newRule);
+        XMLString::trim(oldVuln);
+        XMLString::trim(newVuln);
+        XMLString::trim(oldStig);
+        XMLString::trim(newStig);
+        StigReport::reportRecord record;
+        record.oldStatus = status; 
+        record.oldRuleID = oldRule; 
+        record.newRuleID = newRule;
+        record.oldVuln = oldVuln;
+        record.newVuln = newVuln;
+        record.oldStig = oldStig;
+        record.newStig = newStig;
+        gReport.addToReport(record);
+
+    }
 }
 void addToNeedAction(char* status,
                      char* oldRule, char* newRule,
                      char* oldVuln, char* newVuln,
                      char* oldStig, char* newStig) {
-    needingAction++;
-    changed++;
+    if (status)
+    {
+        strNeedAction += status; 
+        strNeedAction.append(" - "); 
+        strNeedAction += oldRule; 
+        strNeedAction.append(" / ");
+        strNeedAction += newRule; 
+        strNeedAction.append("\t");
+        strNeedAction += oldVuln;
+        strNeedAction.append(" / ");
+        strNeedAction += newVuln;
+        strNeedAction.append("\t");
+        strNeedAction += oldStig;
+        strNeedAction.append(" / ");
+        strNeedAction += newStig;
+        strNeedAction.append("\n");
+        needingAction++;
+        //changed++;
+    }
 }
 
 void setElementContent( XMLSize_t index, DOMNodeList* nodelist, const char* element, const char* value ) {
@@ -146,6 +195,8 @@ void checkRuleID( DOMDocument* xmlold, DOMDocument* xmlnew ) {
     DOMNodeList *xmloldchildren = xmloldRoot->getElementsByTagName(XMLString::transcode("VULN"));
     const XMLSize_t xmloldnodeCount = xmloldchildren->getLength();
     const XMLSize_t xmlnewnodeCount = xmlnewchildren->getLength();
+    gReport.addOldVuln(xmloldnodeCount);
+    gReport.addNewVuln(xmlnewnodeCount);
     //cout << "Found " << nodeCount << " Vulneralability Elements" << endl;
     for( XMLSize_t i = 0; i < xmlnewnodeCount; i++ ) {
         // Get the three elements under the VULN TAG
@@ -164,32 +215,46 @@ void checkRuleID( DOMDocument* xmlold, DOMDocument* xmlnew ) {
             char* status = getElementContent(j, xmloldchildren, "STATUS");
             char* findDetails = getElementContent(j, xmloldchildren, FINDING_DETAILS);
             char* comments = getElementContent(j, xmloldchildren, COMMENTS);
-	        if (strcmp(ruleId,oldRuleId) == 0 ) {
 
-                // Same rule id and not reviewed
-		        if (strncmp(status, NOT_REVIEWED, NOT_REVIEWED_LEN ) != 0) {
+            // rules match
+	        if (strcmp(ruleId,oldRuleId) == 0 ) 
+            {
+                matchingruleid++;
+                // Same rule id rules
+
+		        if (strncmp(status, NOT_REVIEWED, NOT_REVIEWED_LEN ) != 0 && 
+                    strcmp(stigId, oldStigId) == 0) 
+                {
+                    // Same rule id and not reviewed and stig id same
                     cout << "Found rule ( " << ruleId << " ) that matches same rule_id and Reviewed" << endl;
                     copyToXmlNewRule1( i, xmlnewchildren, status, findDetails, comments);
                     break;
-                }
-                else // same rule id and reviewed
+                } 
+                else if (strncmp(status, NOT_REVIEWED, NOT_REVIEWED_LEN ) == 0)
                 {
-                    cout << "Found rule ( " << ruleId << " ) that matches same rule_id and NOT Reviewed" << endl;
-                    copyToXmlNewRule1( i, xmlnewchildren, status, findDetails, comments);
-                    break;
+                    if (strcmp(vulnNum, oldVulNum) == 0 )
+                    {
+                        copyToXmlNewRule1( i, xmlnewchildren, status, findDetails, comments);
+                    }
+                    else
+                    {
+                        // Same rule id and reviewed
+                        cout << "Found rule ( " << ruleId << " ) that matches same rule_id and NOT Reviewed" << endl;
+                        copyToXmlNewRule1( i, xmlnewchildren, status, findDetails, comments);
+                        break;
+                    }
                 }
 	       }
            else
            {
-               // Rule id does not match but same vul num
-               if ( strcmp(vulnNum, oldVulNum) == 0 ) {
-		           if (strncmp(status, NOT_REVIEWED, NOT_REVIEWED_LEN ) != 0) {
-                       addToReport( status, oldRuleId, ruleId,
-                                            oldVulNum, vulnNum,
-                                            oldStigId, stigId);
-                       addToNeedAction(status, oldRuleId, ruleId,
-                                               oldVulNum, vulnNum,
-                                               oldStigId, stigId);
+               // Different rule id rules
+               
+               if ( strcmp(vulnNum, oldVulNum) == 0 ) 
+               {
+                   addToReport( status, oldRuleId, ruleId, oldVulNum, vulnNum, oldStigId, stigId);
+		           if (strncmp(status, NOT_REVIEWED, NOT_REVIEWED_LEN ) != 0) 
+                   {
+                       addToNeedAction(status, oldRuleId, ruleId, oldVulNum, vulnNum, oldStigId, stigId);
                        string strfindingDetails = ISSM_MUST_REVIEW;
                        strfindingDetails.append(findDetails);
                        string strComments = ISSM_MUST_REVIEW;
@@ -199,9 +264,18 @@ void checkRuleID( DOMDocument* xmlold, DOMDocument* xmlnew ) {
                                           OPEN,
                                           strfindingDetails.c_str(), 
                                           strComments.c_str());
+                       changed++;
+                   }
+                   else if (strncmp(status, NOT_REVIEWED, NOT_REVIEWED_LEN ) == 0) 
+                   {
+                       changed++;
+                       copyToXmlNewRule1( i, 
+                                          xmlnewchildren, 
+                                          status,
+                                          findDetails,
+                                          comments);
                    }
                }
-             
            }
         }
     }
@@ -258,8 +332,9 @@ void showValues( DOMNode* node ) {
 
 }
 
-void check_fill_in_statements(DOMDocument* d, const char* elements) {
+void check_fill_in_statements(DOMDocument* d, const char* elements, const char* val) {
     cout << "Testing Filling in statements" << endl;
+    int updated = 0;
     DOMElement* root = d->getDocumentElement();
     DOMNodeList *children = root->getElementsByTagName(XMLString::transcode(elements));
     const XMLSize_t nodeCount = children->getLength();
@@ -273,13 +348,19 @@ void check_fill_in_statements(DOMDocument* d, const char* elements) {
             DOMNodeList *children = node->getChildNodes();
             DOMNode* child = children->item(0);
             DOMText* currentText = dynamic_cast< xercesc::DOMText* >( child );
+            char* value = XMLString::transcode(currentText->getWholeText());
+
+            if ( strncmp(value, val, (strlen(val)-1)) == 0 ){
+                updated++;
+            }
 #ifdef DEBUG
             cout << XMLString::transcode(currentText->getWholeText()) << endl;
 #endif
         } else {
-            cout << "nothing changed test failed" << endl;
+            cout << "nothing changed for a node failed" << endl;
         }
     }
+    cout << "Test returned " << updated << " updates" << endl;
 
 }
 //
@@ -351,6 +432,33 @@ DOMDocument* loadXmlFile( const string& file, XercesDOMParser* xmlDom) {
 
 }
 
+void findNewItems( DOMDocument* d) {
+    //
+    // elements left with finding_details that we set earlier are new
+    // as we have not changed them after checkRules
+    //
+    DOMElement* root = d->getDocumentElement();
+    DOMNodeList *children = root->getElementsByTagName(XMLString::transcode(FINDING_DETAILS));
+    const XMLSize_t nodeCount = children->getLength();
+    for( XMLSize_t i = 0; i < nodeCount; i++ ) {
+        DOMNode* node = children->item(i);
+        if (node->hasChildNodes()) 
+        {
+            DOMNodeList *children = node->getChildNodes();
+            DOMNode* child = children->item(0);
+            DOMText* currentText = dynamic_cast< xercesc::DOMText* >( child );
+            char* value = XMLString::transcode(currentText->getWholeText());
+		    if (strncmp(value, NOT_AVAILABLE_PREV, strlen(NOT_AVAILABLE_PREV) ) == 0)
+            {
+                newcount++;
+	            char* oldVulNum = getVulnAttr(VULNNUM, i, children);
+	            char* oldStigId = getVulnAttr(STIGID, i, children);
+                addToReport( NULL, NULL, NULL, oldVulNum, NULL, oldStigId, NULL);
+            }
+        }
+    }
+}
+
 void processFiles(const string& fileOld, const string& fileNew) {
     try {
         XMLPlatformUtils::Initialize();
@@ -358,14 +466,17 @@ void processFiles(const string& fileOld, const string& fileNew) {
         XercesDOMParser* xmlNew = new XercesDOMParser();
         DOMDocument* docOld = loadXmlFile( fileOld, xmlOld);
         DOMDocument* docNew = loadXmlFile( fileNew, xmlNew);
+
         // Update fields with new values
         fill_in_statements(docNew, FINDING_DETAILS, NOT_AVAILABLE_PREV ); 
-        check_fill_in_statements(docNew, FINDING_DETAILS ); 
+        check_fill_in_statements(docNew, FINDING_DETAILS, NOT_AVAILABLE_PREV ); 
         fill_in_statements(docNew, "COMMENTS", NOT_AVAILABLE_PREV ); 
-        check_fill_in_statements(docNew, "COMMENTS" ); 
+        check_fill_in_statements(docNew, "COMMENTS", NOT_AVAILABLE_PREV ); 
         // Compare rule_id changes on old to new
         checkRuleID( docOld, docNew );
+        findNewItems(docNew);
         write_file(docNew, "test");
+        write_report();
         XMLPlatformUtils::Terminate();
     } catch (const XMLException& toCatch ) {
         cerr << "exception caught on initialization" << endl;
