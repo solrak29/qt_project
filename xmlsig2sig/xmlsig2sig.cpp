@@ -42,6 +42,7 @@ void write_report() {
     gReport.addChanged(changed);
     gReport.addNeedsAction(needingAction);
     gReport.writeReport();
+    gReport.writeAction();
 }
 
 void addToReport(char* status, 
@@ -73,25 +74,23 @@ void addToNeedAction(char* status,
                      char* oldRule, char* newRule,
                      char* oldVuln, char* newVuln,
                      char* oldStig, char* newStig) {
-    if (status)
-    {
-        strNeedAction += status; 
-        strNeedAction.append(" - "); 
-        strNeedAction += oldRule; 
-        strNeedAction.append(" / ");
-        strNeedAction += newRule; 
-        strNeedAction.append("\t");
-        strNeedAction += oldVuln;
-        strNeedAction.append(" / ");
-        strNeedAction += newVuln;
-        strNeedAction.append("\t");
-        strNeedAction += oldStig;
-        strNeedAction.append(" / ");
-        strNeedAction += newStig;
-        strNeedAction.append("\n");
+        XMLString::trim(status);
+        XMLString::trim(oldRule);
+        XMLString::trim(newRule);
+        XMLString::trim(oldVuln);
+        XMLString::trim(newVuln);
+        XMLString::trim(oldStig);
+        XMLString::trim(newStig);
+        StigReport::reportRecord record;
+        record.oldStatus = status; 
+        record.oldRuleID = oldRule; 
+        record.newRuleID = newRule;
+        record.oldVuln = oldVuln;
+        record.newVuln = newVuln;
+        record.oldStig = oldStig;
+        record.newStig = newStig;
+        gReport.addToAction(record);
         needingAction++;
-        //changed++;
-    }
 }
 
 void setElementContent( XMLSize_t index, DOMNodeList* nodelist, const char* element, const char* value ) {
@@ -104,15 +103,11 @@ void setElementContent( XMLSize_t index, DOMNodeList* nodelist, const char* elem
 }
 
 char* getElementContent( XMLSize_t index, DOMNodeList* children, const char* element ) {
-    cout << "Got element..." << endl;
     DOMElement* e = dynamic_cast< xercesc::DOMElement* >( children->item(index));
-    cout << "Got element...2" << endl;
     DOMNodeList *data_list = e->getElementsByTagName(XMLString::transcode(element));
-    cout << "Got element...3" << endl;
     DOMNode* c = data_list->item(0);
-    cout << "Got element...4" << endl;
     DOMNode* cc = c->getChildNodes()->item(0);
-    cout << "Got element...5" << endl;
+    //cout << "Got element...5" << endl;
     DOMText* t = dynamic_cast< xercesc::DOMText* >(cc);
     char* status = "";
     // some fields can be empty
@@ -162,7 +157,7 @@ char* getVulnAttr( const char* attr, XMLSize_t index, DOMNodeList* children) {
     //cout << "Found " << nodeCount << " STIG DATA for Vulnerability" << endl;
     for( XMLSize_t i = 0; i < nodeCount; i++ ) {
         // does this stig data have our attr we are looking for?
-        int len = strlen(getAttr(VULN_ATTRIB, data_list, i));
+        //int len = strlen(getAttr(VULN_ATTRIB, data_list, i));
         char* val = getAttr(VULN_ATTRIB, data_list, i);
         if ( strncmp(val, attr, (strlen(attr)-1)) == 0 ){
             // now the value that should be there
@@ -174,7 +169,7 @@ char* getVulnAttr( const char* attr, XMLSize_t index, DOMNodeList* children) {
 }
 
 void copyToXmlNewRule1( XMLSize_t index, DOMNodeList* nodeList, const char* status, const char* findingDetails, const char* comments ) {
-    cout << "Updating stig with " << findingDetails << endl;
+    //cout << "Updating stig with " << findingDetails << endl;
     setElementContent( index, nodeList, STATUS, status);
     setElementContent( index, nodeList, FINDING_DETAILS, findingDetails);
     setElementContent( index, nodeList, COMMENTS, comments);
@@ -226,7 +221,7 @@ void checkRuleID( DOMDocument* xmlold, DOMDocument* xmlnew ) {
                     strcmp(stigId, oldStigId) == 0) 
                 {
                     // Same rule id and not reviewed and stig id same
-                    cout << "Found rule ( " << ruleId << " ) that matches same rule_id and Reviewed" << endl;
+                    //cout << "Found rule ( " << ruleId << " ) that matches same rule_id and Reviewed" << endl;
                     copyToXmlNewRule1( i, xmlnewchildren, status, findDetails, comments);
                     break;
                 } 
@@ -475,7 +470,7 @@ void processFiles(const string& fileOld, const string& fileNew) {
         // Compare rule_id changes on old to new
         checkRuleID( docOld, docNew );
         findNewItems(docNew);
-        write_file(docNew, "test");
+        write_file(docNew, "test.ckl");
         write_report();
         XMLPlatformUtils::Terminate();
     } catch (const XMLException& toCatch ) {

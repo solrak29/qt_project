@@ -23,8 +23,10 @@ class StigReport {
     typedef vector<reportRecord>::iterator RptIteratorType;
          StigReport(){};
          ~StigReport(){};
-         void addToReport(const reportRecord&);
+         void addToReport(const reportRecord& rec){ rptEntries.push_back(rec);};
+         void addToAction(const reportRecord& rec){ actionEntries.push_back(rec);};
          void writeReport();
+         void writeAction();
          void addOldVuln( int vuln ) {oldVulnNumber = vuln;};
          void addNewVuln( int vuln ) {newVulnNumber = vuln;};
          void addMatching( int match) {matchingValues = match;};
@@ -39,5 +41,6 @@ class StigReport {
         int changedValues;
         int needsAction;
         RptListType rptEntries;
+        RptListType actionEntries;
 };
 #endif

@@ -28,6 +28,9 @@ int main(int argc, char** argv ) {
         cout << "Processing old file => " << fileOld << endl;
         cout << "Processing new file => " << fileNew << endl;
         processFiles(fileOld, fileNew);
+        //char* path_exec = "C:\\Users\\USER\\Downloads\\U_STIGViewer_2-11_Win64\\bin\\STIGViewer.bat test.ckl";
+        //cout << path_exec << endl;
+        //system(path_exec);
         cout << "finished" << endl;
     } else {
         usage();
