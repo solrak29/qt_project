@@ -470,7 +470,9 @@ void processFiles(const string& fileOld, const string& fileNew) {
         // Compare rule_id changes on old to new
         checkRuleID( docOld, docNew );
         findNewItems(docNew);
-        write_file(docNew, "test.ckl");
+        string newfile = "Result\."; 
+        newfile.append(fileNew);
+        write_file(docNew, newfile.c_str());
         write_report();
         XMLPlatformUtils::Terminate();
     } catch (const XMLException& toCatch ) {

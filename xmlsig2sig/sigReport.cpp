@@ -5,7 +5,7 @@ void
 StigReport::writeAction() {
     RptIteratorType it = actionEntries.begin();
     fstream f;
-    f.open("action_report", fstream::out);
+    f.open("NeedingAction.txt", fstream::out);
     f  << setw(11) << "OLD Status" 
        << setw(26) << "Ruleid OLD/New" 
        << setw(33) << "Vuln OLD/New" 
@@ -25,7 +25,7 @@ void
 StigReport::writeReport() {
     RptIteratorType it = rptEntries.begin();
     fstream f;
-    f.open("report", fstream::out);
+    f.open("Report", fstream::out);
     f << "Different Rule_id\n" 
       << setw(11) << "OLD Status" 
       << setw(26) << "Ruleid OLD/New" 
